@@ -34,7 +34,7 @@ The core functionality includes creating dynamic maps, sampling-based trajectory
  ![infinito](https://github.com/user-attachments/assets/022e03ae-3b8e-4125-afe2-d3fe94a77802)
 
 - **`LaberintoS_2.m`**: Creates a maze-like map for testing path planning in constrained environments.
-<div align="center">
+<div>
   <img src="https://github.com/user-attachments/assets/41d6b836-b93b-4999-bfa8-37870db85648" alt="image" width="50%">
 </div>
 
