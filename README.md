@@ -1,7 +1,7 @@
 # Model Predictive Path Integral Control (MPPI)
 
 ## Overview
-This project implements a **Model Predictive Path Integral (MPPI) Control** framework for autonomous navigation and control in complex environments. It is based on **Information Theoretic MPC** principles and designed to handle stochastic dynamics, non-linear cost functions, and high-velocity navigation tasks.
+This project implements a **Model Predictive Path Integral (MPPI) Control** framework for autonomous navigation and control in complex environments. It is based on **Information Theoretic MPC** principles and designed to handle high-velocity navigation tasks.
 
 The core functionality includes creating dynamic maps, sampling-based trajectory optimization, and visualizing the results through simulation. The approach leverages sampling-based optimization for real-time control applications, such as aggressive autonomous driving and navigation in challenging environments.
 
