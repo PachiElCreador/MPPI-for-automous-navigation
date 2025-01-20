@@ -24,20 +24,31 @@ The core functionality includes creating dynamic maps, sampling-based trajectory
 
 ### Map Generation
 - **`createMap.m`**: Generates a square grid map with customizable obstacles and cost layers.
-- ![image](https://github.com/user-attachments/assets/2d7b0cf1-cf0b-484b-bbf2-89f83b7d8dbe)
+- ![square](https://github.com/user-attachments/assets/ea8b03c9-3065-48f6-9be5-86c6861d54a8)
 
 - **`dynamic_map.m`**: Creates a map with dynamic obstacles, including cost adjustments based on proximity to obstacles.
-- ![image](https://github.com/user-attachments/assets/5bee1561-6f04-4297-bb4e-818db49d0227)
+- ![dynamic_map](https://github.com/user-attachments/assets/07dfc4df-9998-4cee-9d14-734404308655)
+
 
 - **`Infinite.m`**: Defines a map with infinite-like patterns and customizable obstacle regions.
-- ![image](https://github.com/user-attachments/assets/932faa21-165b-433c-b319-2736dcbb324e)
+ ![infinito](https://github.com/user-attachments/assets/022e03ae-3b8e-4125-afe2-d3fe94a77802)
 
 - **`LaberintoS_2.m`**: Creates a maze-like map for testing path planning in constrained environments.
-- ![image](https://github.com/user-attachments/assets/679bc7d5-d424-466f-9e72-e366ffe26632)
+<div align="center">
+  <img src="https://github.com/user-attachments/assets/41d6b836-b93b-4999-bfa8-37870db85648" alt="image" width="50%">
+</div>
+
+
+
 - 
 
 - **`Oval.m`**: Generates an oval-shaped map with inner and outer obstacle boundaries.
-- 
+- ![Oval circuit](https://github.com/user-attachments/assets/5ffed930-e509-48da-b791-4190328815d7)
+
+- **`Hexagonal_map.m`**: Explores a hexagonal map structure for testing navigation and target reaching, inspired by prior MPC navigation projects.
+- ![hexagon](https://github.com/user-attachments/assets/21d679ba-6a12-4277-8b5b-090d827c3778)
+
+
 
 
 ### Utility Functions
@@ -46,6 +57,8 @@ The core functionality includes creating dynamic maps, sampling-based trajectory
 ### Supporting Documents
 - **`Information Theoretic MPC.pdf`**: A detailed explanation of the Information Theoretic MPC framework.
 - **`Theory and Application to Autonomous Driving.pdf`**: A paper exploring the application of the framework to aggressive autonomous driving.
+ 
+![Captura de pantalla 2025-01-16 053555](https://github.com/user-attachments/assets/49fc8112-e42a-4b2e-9979-04bfaede051d)
 
 ---
 
