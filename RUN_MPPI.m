@@ -2,131 +2,146 @@
 % Initialization of the Model Predictive Path Integral Control problem for
 % a single track model
 
-clc
 clear all;
 close all;
+clc;
 warning off
 
-% Optmization hyperparameters
-param.timesteps = 50; % Horizon(timesteps)
-param.samples = 400; % Number of samples
-param.iterations = 2000; % Number of iterations
+%% MPPI Configuration Parameters
+% Optimization parameters based on Information Theoretic MPC framework
+param.timesteps = 50;     % Prediction horizon T
+param.samples = 100;      % Number of trajectory samples K
+param.iterations = 200;   % Maximum optimization iterations N
 
-% Initial conditions (x-position, y-position, velocity, side slip angle, yaw angle, yaw rate, etc.)
-%                 x  y  v  ang
-param.xmeasure = [5 5 0 0 0 pi/2 0 0 0 0];    
+% Initial state configuration [x, y, v, β, ψ, ω, ẋ, ẏ, ψ̇, φ̇]
+% where: x,y = position, v = velocity, β = slip angle, 
+% ψ = yaw angle, ω = yaw rate, φ̇ = wheel rotation rate
+param.xmeasure = [12 30 0 0 pi/2 0 0 0 0 0];    
 
-% Desired states
-%                   x  y  v 
-param.x_desired = [5 95 35 0 0 0 0 0 0 0]; 
+% Target state configuration
+param.x_desired = [0 0 30 0 0 0 0 0 0 0]; 
 
-param.tmeasure = 0;    % Initial time
-param.dT = .1;    % Timestep
-n_inputs = 4;     % Number of inputs of the system  
+% Time parameters
+param.tmeasure = 0;    % Initial time t₀
+param.dT = 0.1;        % Time step Δt
 
-param.u = zeros(param.timesteps,n_inputs); % Initial input sequence of zeros
-% param.u(:,4) = 1; 
-% param.u=normrnd(0,20,[param.timesteps,n_inputs]); Initial input sequence of random number
+% Control input configuration
+num_controls = 4;      % Number of control inputs
+param.u = zeros(param.timesteps, num_controls);  % Initial control sequence
 
-param.u_UB = [0.5263 1 1 1]; % Control upper bound
-param.u_LB = [-0.5263 0 0 0.01]; % Control lower bound
-param.system_noise = 1*[0.01 0.01 0.01 0.01 0.01 0.01 0.01 0.01 0.01 0.01]; % Noise in the system
+% Control bounds (based on vehicle dynamics constraints)
+param.u_UB = [0.5263 1 1 1];         % Upper bounds [δmax, Fb_max, ζmax, φmax]
+param.u_LB = [-0.5263 0 0 0.01];     % Lower bounds [δmin, Fb_min, ζmin, φmin]
 
+% Noise parameters (based on stochastic optimal control theory)
+param.system_noise = 0.01 * ones(1,10);  % System noise covariance Σw
 
-% Control hyperparameters
-param.lambda = 5; %Inverse temperature
-param.sigma = [.1 0.15 .01 .1]; %Covariance of the control input
-param.alpha = 0.01; % Base distribution parameters (0 < alpha < 1)
-param.gamma = param.lambda*(1-param.alpha); % Control cost parameter
+% MPPI specific parameters (from Information Theoretic MPC)
+param.lambda = 5;      % Temperature parameter λ (controls exploration)
+param.sigma = [0.1 0.15 0.01 0.1];   % Control noise covariance Σu
+param.alpha = 0.01;    % Mixing coefficient α (exploration vs exploitation)
+param.gamma = param.lambda*(1-param.alpha);  % Control cost weight γ
 
-% Initializes the simulation
+%% Execute MPPI Controller
 tic
-inital_time_cpu = cputime;
+cpu_start = cputime;
 
 [t_all, x_all, u_all] = MPPI_nav_controller(@system_dynamics, param, @running_cost,@terminal_cost);
 
-param.time_normal = toc
-param.cpu_time = cputime - inital_time_cpu
+param.computation_time = toc;
+param.cpu_usage = cputime - cpu_start;
 
+%% Cost Functions Implementation
 
-% Calculate the running state dependent cost
-% Inputs:  x: current states
-%          x_desired: desired states
-% Output: J: Cost
-function [J] = running_cost(x, x_desired)
-
-% calculate the state dependent cost
-% Q = diag([0,0,100,0,80,0,0,0,0,0]);
-
-% Q = diag([0,0,50,5,0,0,0,0,0,0]); %works sim 2
-Q = diag([0,0,1,1,0,0,0,0,0,0]);
-J =(x-x_desired)*Q*(x-x_desired)';
-
-% Cost over the slipage of the model
-% if x(4) > 0.7
-%    J = J + 100000000; 
-% end
-
-
+% running cost function (running cost)
+% Implements quadratic cost: l(x,u) = (x-x*)ᵀQ(x-x*)
+function [cost] = running_cost(state, target)
+    % State cost weights matrix Q
+    Q = diag([0,0,1,1,0,0,0,0,0,0]);
+    cost = (state-target)*Q*(state-target)';
 end
 
-% Calculate the terminal state dependent cost
-% Inputs:  x: current states
-%          x_desired: desired states
-% Output: J: Cost
-function [J] = terminal_cost(x, x_desired)
-
-Q = diag([0,0,0,0,0,0,0,0,0,0]);
-J =(x-x_desired)*Q*(x-x_desired)';
-
-
+% Terminal Cost Function
+% Implements terminal cost: lf(x) = (x-x*)ᵀQf(x-x*)
+function [cost] = terminal_cost(state, target)
+    % Terminal state cost weights matrix Qf
+    % Adjust Qf based on the specific task or optimization goals
+    Qf = diag([0, 0, 0, 0, 0, 0, 0, 0, 0, 0]); % Placeholder weights
+    cost = (state - target) * Qf * (state - target)';
 end
 
 
-% Single-track model
-% Input: t: time (only for time variant systems)
-%        X: system states (x-position,y-position,velocity,
-%           side slip angle,yaw angle,zaw rate, x-velocity, 
-%           y velocity, yaw rate(redundant),
-%           whell rotatory frequency)
-%        U: control input (steering angle, breaking force, breaking force distribution, gas pedal position)
-%        dW: system noise
-function single_track = system_dynamics(t, X ,U, dW)
-G = 1;
-if X(3) < 9
-  G = 1;
-elseif X(3)>8.9 && X(3)<16 %v > 9 && v < 16
-    G = 2;
-elseif X(3)>15.9 && X(3)<23 % v > 14 && v < 16
-    G = 3;
-elseif X(3)>22.9 && X(3)<30 %%v >16 && v <25
-    G = 4;
-elseif X(3)>30
-    G=5;
-end
 
-%% vehicle parameters
-m=1239; % vehicle mass
-g=9.81; % gravitation
-l_f=1.19016; % distance of the front wheel to the center of mass 
-l_r=1.37484; % distance of the rear wheel to the center of mass
-%l=l_f+l_r; % vehicle length (obsolete)
-R=0.302; % wheel radius
-I_z=1752; % vehicle moment of inertia (yaw axis)
-I_R=1.5; % wheel moment of inertia
-i_g=[3.91 2.002 1.33 1 0.805]; % transmissions of the 1st ... 5th gear
-i_0=3.91; % motor transmission
-B_f=10.96; % stiffnes factor (Pacejka) (front wheel)
-C_f=1.3; % shape factor (Pacejka) (front wheel)
-D_f=4560.4; % peak value (Pacejka) (front wheel)
-E_f=-0.5; % curvature factor (Pacejka) (front wheel)
-B_r=12.67; %stiffnes factor (Pacejka) (rear wheel)
-C_r=1.3; %shape factor (Pacejka) (rear wheel)
-D_r=3947.81; %peak value (Pacejka) (rear wheel)
-E_r=-0.5; % curvature factor (Pacejka) (rear wheel)
-f_r_0=0.009; % coefficient (friction)
-f_r_1=0.002; % coefficient (friction)
-f_r_4=0.0003; % coefficient (friction)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% System Dynamics Function
+% Implements single-track vehicle dynamics with gear selection
+function single_track = system_dynamics(t, X, U, dW)
+    % Gear selection logic based on velocity thresholds
+    % Adjust thresholds and logic if the vehicle model or parameters change
+    G = 1; % Default gear
+    if X(3) < 9
+        G = 1; % Gear 1
+    elseif X(3) > 8.9 && X(3) < 16 % Velocity between 9 and 16 m/s
+        G = 2; % Gear 2
+    elseif X(3) > 15.9 && X(3) < 23 % Velocity between 16 and 23 m/s
+        G = 3; % Gear 3
+    elseif X(3) > 22.9 && X(3) < 30 % Velocity between 23 and 30 m/s
+        G = 4; % Gear 4
+    elseif X(3) > 30
+        G = 5; % Gear 5
+    end
+
+    % - The gear selection thresholds are based on standard vehicle dynamics practices.
+    % - [7] and [8].
+    % - Additional dynamics or external disturbances (dW) can be incorporated as needed.
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Vehicle Parameters
+
+% Mass and Gravity Parameters
+m = 1000; % Vehicle mass [kg]
+g = 9.81; % Gravitational acceleration [m/s^2]
+
+% Geometric Parameters
+l_f = 1.19016; % Distance from the front axle to the center of mass [m]
+l_r = 1.37484; % Distance from the rear axle to the center of mass [m]
+% l = l_f + l_r; % Total wheelbase (not used, kept for reference)
+R = 0.302; % Wheel radius [m]
+
+% Inertia Parameters
+I_z = 1752; % Moment of inertia about the yaw axis [kg*m^2]
+I_R = 1.5; % Moment of inertia of the wheels [kg*m^2]
+
+% Transmission Ratios
+i_g = [3.91, 2.002, 1.33, 1, 0.805]; % Gear ratios for 1st to 5th gear
+i_0 = 3.91; % Final drive ratio
+
+% Tire Parameters (Pacejka Model)
+B_f = 10.96; % Stiffness factor for the front wheel
+C_f = 1.3; % Shape factor for the front wheel
+D_f = 4560.4; % Peak factor for the front wheel
+E_f = -0.5; % Curvature factor for the front wheel
+B_r = 12.67; % Stiffness factor for the rear wheel
+C_r = 1.3; % Shape factor for the rear wheel
+D_r = 3947.81; % Peak factor for the rear wheel
+E_r = -0.5; % Curvature factor for the rear wheel
+
+% Rolling Resistance Coefficients
+f_r_0 = 0.009; % Rolling resistance constant coefficient
+f_r_1 = 0.002; % Rolling resistance linear coefficient
+f_r_4 = 0.0003; % Rolling resistance quadratic coefficient
+
+% Notes:
+% - Parameters such as the Pacejka coefficients are consistent with values
+% given for vehicle dynamics simulations in referenced literature.
+% - These values may need further tuning based on the specific vehicle
+% model or experimental data, as indicated in [7] and [8].
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% control inputs
@@ -136,17 +151,17 @@ F_b=U(2); %braking force
 zeta=U(3); % braking force distribution
 phi=U(4); % gas pedal position
 % input constraints
-if delta>0.53 % upper bound for steering angle exceeded?
-    delta=0.53; % upper bound for steering angle
+if delta>0.5 % upper bound for steering angle exceeded?
+    delta=0.5; % upper bound for steering angle
 end
-if delta<-0.53 % lower bound for steering angle exceeded?
-    delta=-0.53; % lower bound for steering angle
+if delta<-0.5 % lower bound for steering angle exceeded?
+    delta=-0.5; % lower bound for steering angle
 end
 if F_b<0 % lower bound for braking force exceeded?
     F_b=0; % lower bound for braking force
 end
-if F_b>15000 % upper bound for braking force exceeded?
-    F_b=15000; % upper bound for braking force 
+if F_b>10000 % upper bound for braking force exceeded?
+    F_b=10000; % upper bound for braking force 
 end
 if zeta<0 % lower bound for braking force distribution exceeded?
     zeta=0; % lower bound for braking force distribution 

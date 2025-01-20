@@ -27,3 +27,5 @@ This project implements a predictive path control based on the Model Predictive 
 
 With these configurations, you can explore different environments and analyze the controller's behavior under various conditions.
 
+
+GitHub:https://github.com/PachiElCreador/MPPI-for-automous-navigation
